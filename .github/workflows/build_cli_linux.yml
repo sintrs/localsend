@@ -29,12 +29,28 @@ jobs:
           - runner: ubuntu-22.04-arm
             suffix: linux-arm-64
     runs-on: ${{ matrix.runner }}
+    container: debian:10
 
     steps:
+      - name: Install build dependencies
+        run: |
+          sed -i \
+            -e 's|deb.debian.org|archive.debian.org|g' \
+            -e '/security.debian.org/d' \
+            /etc/apt/sources.list
+          apt-get -o Acquire::Check-Valid-Until=false update
+          apt-get install -y --no-install-recommends \
+            build-essential ca-certificates curl git libssl-dev pkg-config
+
       - uses: actions/checkout@v6
 
       - name: Install Rust
-        run: rustup toolchain install # version from rust-toolchain.toml
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --profile minimal --default-toolchain none
+          . "$HOME/.cargo/env"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          rustup toolchain install # version from rust-toolchain.toml
 
       - name: Compile CLI
         run: cargo build --release --package localsend-cli
