@@ -1,4 +1,4 @@
-# LocalSend
+# LocalSend For UOS20
 
 [![CI status][ci-badge]][ci-workflow]
 [![Translations][translate-badge]][translate-link]
