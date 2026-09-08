@@ -1,5 +1,5 @@
 # LocalSend CLI版本 
-# 采用Debian10环境构建 兼容统信系统UOS V20(1070)
+### 采用Debian10环境构建 兼容统信系统UOS V20(1070)
 
 [![CI status][ci-badge]][ci-workflow]
 [![Translations][translate-badge]][translate-link]
