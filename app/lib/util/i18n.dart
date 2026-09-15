@@ -90,6 +90,7 @@ extension AppLocaleExt on AppLocale {
       AppLocale.zhCn => '简体中文',
       AppLocale.zhHk => '繁體中文 (香港)',
       AppLocale.zhTw => '繁體中文 (台灣)',
+      AppLocale.ky => 'Кыргызча',
     };
   }
 }
