@@ -1,4 +1,4 @@
-name: Build CLI for Linux
+name: Build CLI for Linux UOS20
 
 on:
   workflow_dispatch:
