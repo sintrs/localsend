@@ -1,4 +1,4 @@
-name: Build linux CLI
+name: Build linux CLI Debian
 
 on:
   workflow_dispatch:
