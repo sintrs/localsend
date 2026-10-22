@@ -1,101 +1,49 @@
-  name: Release Linux CLI Only
+name: Release Linux CLI Only
 
-  on:
-    workflow_dispatch: # 依然保持纯手动触发
+on:
+  workflow_dispatch: # 依然保持纯手动触发
 
-  jobs:
-    build:
-      runs-on: ubuntu-24.04
-      outputs:
-        version: ${{ steps.get_version.outputs.version }}
-      steps:
-        - uses: actions/checkout@v6
-        - name: Get version from pubspec.yaml
-          id: get_version
-          run: |
-            VERSION=$(sed -n 's/^version: \([0-9]*\.[0-9]*\.[0-9]*\).*/\1/p' app/pubspec.yaml)
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
+jobs:
+  # 标准 Linux 构建（glibc / ubuntu-22.04 runner），产出 2 个包
+  build_cli_linux:
+    uses: ./.github/workflows/build_linux_cli-debian.yml
 
-    build_cli_linux:
-      needs: build
-      strategy:
-        fail-fast: false
-        matrix:
-          include:
-            - runner: ubuntu-22.04
-              suffix: linux-x86-64
-            - runner: ubuntu-22.04-arm
-              suffix: linux-arm-64
-      runs-on: ${{ matrix.runner }}
-      container: debian:10
-      steps:
-        - name: Install build dependencies
-          run: |
-            sed -i -e 's|deb.debian.org|archive.debian.org|g' -e '/security.debian.org/d' /etc/apt/sources.list
-            apt-get -o Acquire::Check-Valid-Until=false update
-            apt-get install -y --no-install-recommends build-essential ca-certificates curl git libssl-dev pkg-config
-        - uses: actions/checkout@v6
-        - name: Install Rust
-          run: |
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-            . "$HOME/.cargo/env"
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            rustup toolchain install
-        - name: Compile CLI
-          run: cargo build --release --package localsend-cli
-        - name: Create tar.gz archive
-          run: tar -czvf LocalSend-CLI-${{ needs.build.outputs.version }}-${{ matrix.suffix }}.tar.gz -C target/release localsend-cli
-        - name: Upload CLI
-          uses: actions/upload-artifact@v6
-          with:
-            name: cli-${{ matrix.suffix }}-result
-            path: LocalSend-CLI-${{ needs.build.outputs.version }}-${{ matrix.suffix }}.tar.gz
+  # UOS 20 兼容构建（debian:10 容器），产出 2 个包
+  build_cli_uos20:
+    uses: ./.github/workflows/build_linux_cli_uos20.yml
 
-    release:
-      needs: [build, build_cli_linux]
-      runs-on: ubuntu-24.04
-      # 仓库默认 token 是只读的（default_workflow_permissions=read），
-      # 不显式给 contents: write，release-drafter 建 release 会 403
-      # "Resource not accessible by integration"，upload_url 随之为空。
-      permissions:
-        contents: write
-      steps:
-        - uses: actions/checkout@v6
-        - name: Draft release
-          id: draft_release
-          uses: release-drafter/release-drafter@v6
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            tag: v${{ needs.build.outputs.version }}
-            name: v${{ needs.build.outputs.version }}
+  release:
+    needs: [build_cli_linux, build_cli_uos20]
+    runs-on: ubuntu-24.04
+    # 仓库默认 token 是只读的（default_workflow_permissions=read），
+    # 不显式给 contents: write，release-drafter 建 release 会 403
+    # "Resource not accessible by integration"，后续上传拿不到 release。
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
 
-        - name: Download and Upload x86_64 CLI
-          uses: actions/download-artifact@v7
-          with:
-            name: cli-linux-x86-64-result
-            path: cli-x86
-        - name: Upload x86_64
-          uses: actions/upload-release-asset@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            upload_url: ${{ steps.draft_release.outputs.upload_url }}
-            asset_path: cli-x86/LocalSend-CLI-${{ needs.build.outputs.version }}-linux-x86-64.tar.gz
-            asset_name: LocalSend-CLI-${{ needs.build.outputs.version }}-linux-x86-64.tar.gz
-            asset_content_type: application/gzip
+      - name: Draft release
+        id: draft_release
+        uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag: v${{ needs.build_cli_linux.outputs.version }}
+          name: v${{ needs.build_cli_linux.outputs.version }}
 
-        - name: Download and Upload ARM64 CLI
-          uses: actions/download-artifact@v7
-          with:
-            name: cli-linux-arm-64-result
-            path: cli-arm
-        - name: Upload ARM64
-          uses: actions/upload-release-asset@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            upload_url: ${{ steps.draft_release.outputs.upload_url }}
-            asset_path: cli-arm/LocalSend-CLI-${{ needs.build.outputs.version }}-linux-arm-64.tar.gz
-            asset_name: LocalSend-CLI-${{ needs.build.outputs.version }}-linux-arm-64.tar.gz
-            asset_content_type: application/gzip
+      # 下载全部 4 个 artifact（cli-linux-*, cli-uos20-*），merge-multiple 拍平到同一目录
+      - name: Download CLI tarballs
+        uses: actions/download-artifact@v7
+        with:
+          path: assets
+          merge-multiple: true
+
+      # 用 gh 一次上传全部资产；--clobber 让重跑幂等（旧的 upload-release-asset
+      # 重跑会 422 already_exists，且该 action 已归档弃用）
+      - name: Upload CLI tarballs to draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -l assets
+          gh release upload "v${{ needs.build_cli_linux.outputs.version }}" assets/*.tar.gz --clobber

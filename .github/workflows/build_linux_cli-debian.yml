@@ -3,6 +3,10 @@ name: Build linux CLI Debian
 on:
   workflow_dispatch:
   workflow_call:
+    outputs:
+      version:
+        description: Version taken from app/pubspec.yaml
+        value: ${{ jobs.build.outputs.version }}
 
 jobs:
   build:
