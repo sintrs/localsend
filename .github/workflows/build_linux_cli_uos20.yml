@@ -25,9 +25,9 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-22.04
-            suffix: linux-x86-64
+            suffix: uos20-x86-64
           - runner: ubuntu-22.04-arm
-            suffix: linux-arm-64
+            suffix: uos20-arm-64
     runs-on: ${{ matrix.runner }}
     container: debian:10
 
