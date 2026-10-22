@@ -23,14 +23,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # 日期进 tag：同一版本号可能多次发布（上游常只改代码不升版本），
+      # 光靠 v<version> 会撞 tag 导致发布失败。同一天重跑则落在同一 tag 上，
+      # 配合 --clobber 幂等更新。
+      - name: Build metadata
+        id: meta
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "date_human=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Draft release
         id: draft_release
         uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag: v${{ needs.build_cli_linux.outputs.version }}
-          name: v${{ needs.build_cli_linux.outputs.version }}
+          tag: v${{ needs.build_cli_linux.outputs.version }}-${{ steps.meta.outputs.date }}
+          name: v${{ needs.build_cli_linux.outputs.version }} (${{ steps.meta.outputs.date_human }})
 
       # 下载全部 4 个 artifact（cli-linux-*, cli-uos20-*），merge-multiple 拍平到同一目录
       - name: Download CLI tarballs
@@ -44,6 +54,27 @@ jobs:
       - name: Upload CLI tarballs to draft release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.build_cli_linux.outputs.version }}-${{ steps.meta.outputs.date }}
         run: |
           ls -l assets
-          gh release upload "v${{ needs.build_cli_linux.outputs.version }}" assets/*.tar.gz --clobber
+          gh release upload "$TAG" assets/*.tar.gz --clobber
+
+      # release-drafter 每次都会用模板重写正文，所以这段构建信息固定追加在末尾：
+      # 给出精确的构建日期与本仓库提交号，便于核对「是否已含官方最新改动」。
+      - name: Append build info to release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.build_cli_linux.outputs.version }}-${{ steps.meta.outputs.date }}
+          DATE_HUMAN: ${{ steps.meta.outputs.date_human }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          UPSTREAM: ${{ needs.build_cli_linux.outputs.version }}
+        run: |
+          gh release view "$TAG" --json body --jq .body > notes.md
+          {
+            echo
+            echo '---'
+            echo
+            echo "> **构建信息**：构建日期 ${DATE_HUMAN}（UTC） · 本仓库提交 \`${SHA}\`"
+            echo "> 已包含官方仓库 [localsend/localsend](https://github.com/localsend/localsend) 截至该日期的全部改动。"
+          } >> notes.md
+          gh release edit "$TAG" --notes-file notes.md

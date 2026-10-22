@@ -3,6 +3,12 @@ template: |
 
   - insert summary here
 
+  ### 与官方仓库的关系
+
+  本仓库紧跟官方仓库 [localsend/localsend](https://github.com/localsend/localsend)，
+  上游代码变化会持续合入本仓库。
+  **每次发布的构建日期即包含官方截至该日期的全部改动**（构建日期见标题与文末「构建信息」）。
+
   ### Contributions
 
   $CHANGES
