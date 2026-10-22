@@ -1,12 +1,31 @@
 template: |
   ### Summary
-  
+
   - insert summary here
-  
+
   ### Contributions
-  
+
   $CHANGES
 
-  [Full Changelog](https://github.com/localsend/localsend/blob/main/app/assets/CHANGELOG.md)
+  ### 该下哪个包？
 
-  Windows binaries are signed according to the [Code signing policy](https://github.com/localsend/localsend/blob/main/CODE_SIGNING.md).
+  本仓库只发布 Linux CLI（`localsend-cli`），共 4 个包：两个架构 × 两套构建环境。
+
+  | 包名 | 构建环境 | 目标系统 glibc | 适用系统 |
+  | --- | --- | --- | --- |
+  | `LocalSend-CLI-*-linux-x86-64.tar.gz` | Ubuntu 22.04 runner | **≥ 2.34** | Ubuntu 22.04+、Debian 12+、Fedora 35+、Arch |
+  | `LocalSend-CLI-*-linux-arm-64.tar.gz` | Ubuntu 22.04 (arm64) | **≥ 2.34** | 同上，ARM64 机器 |
+  | `LocalSend-CLI-*-uos20-x86-64.tar.gz` | Debian 10 容器 | **≥ 2.28** | 统信 UOS V20、Debian 10、Ubuntu 20.04、CentOS / RHEL 8 |
+  | `LocalSend-CLI-*-uos20-arm-64.tar.gz` | Debian 10 容器 (arm64) | **≥ 2.28** | 同上，ARM64 机器 |
+
+  判断方法：`uname -m` 看架构（`x86_64` → `x86-64`，`aarch64` → `arm-64`），
+  `ldd --version` 看 glibc —— **≥ 2.34 选 `linux` 版**，**2.28 ~ 2.33 只能选 `uos20` 版**。
+
+  包是 gzip 压缩的 tar，内含单个可执行文件 `localsend-cli`，权限已保留，解包即用：
+
+  ```shell
+  tar -xzf LocalSend-CLI-<ver>-linux-x86-64.tar.gz
+  ./localsend-cli --help
+  ```
+
+  [Full Changelog](https://github.com/localsend/localsend/blob/main/app/assets/CHANGELOG.md)

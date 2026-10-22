@@ -1,5 +1,33 @@
-# LocalSend CLI版本 
-### 采用Debian10环境构建 兼容统信系统UOS V20(1070)
+# LocalSend CLI 版本
+
+本仓库只发布 **Linux CLI**（`localsend-cli`）预编译包，每次发布共 4 个：两个架构 × 两套构建环境。
+
+## 该下哪个包？
+
+| 包名 | 构建环境 | 目标系统 glibc | 适用系统 |
+| --- | --- | --- | --- |
+| `LocalSend-CLI-<ver>-linux-x86-64.tar.gz` | Ubuntu 22.04 runner | **≥ 2.34** | Ubuntu 22.04+、Debian 12+、Fedora 35+、Arch 等较新发行版 |
+| `LocalSend-CLI-<ver>-linux-arm-64.tar.gz` | Ubuntu 22.04 (arm64) | **≥ 2.34** | 同上，ARM64 机器 |
+| `LocalSend-CLI-<ver>-uos20-x86-64.tar.gz` | Debian 10 容器 | **≥ 2.28** | 统信 UOS V20、Debian 10、Ubuntu 20.04、CentOS / RHEL 8 |
+| `LocalSend-CLI-<ver>-uos20-arm-64.tar.gz` | Debian 10 容器 (arm64) | **≥ 2.28** | 同上，ARM64 机器 |
+
+**怎么选**：先看架构（`uname -m` → `x86_64` 用 `x86-64`，`aarch64` 用 `arm-64`），再看 glibc（`ldd --version` 第一行）：
+
+- glibc **≥ 2.34** → 选 `linux` 版
+- glibc **2.28 ~ 2.33** → 只能选 `uos20` 版（`linux` 版会报 `GLIBC_2.34 not found`）
+
+`uos20` 版之所以单独存在，是因为统信 UOS V20 / CentOS 8 这类系统的 glibc 停留在 2.28，跑不了新基线编译的二进制。
+
+## 安装与运行
+
+压缩包是 gzip 压缩的 tar，内含单个可执行文件 `localsend-cli`（权限 755 已保留），解包即用：
+
+```shell
+tar -xzf LocalSend-CLI-<ver>-linux-x86-64.tar.gz
+./localsend-cli --help
+```
+
+需要装到系统路径就 `install -m 755 localsend-cli /usr/local/bin/`。
 
 [![CI status][ci-badge]][ci-workflow]
 [![Translations][translate-badge]][translate-link]
