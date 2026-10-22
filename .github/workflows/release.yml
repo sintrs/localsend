@@ -54,6 +54,11 @@
     release:
       needs: [build, build_cli_linux]
       runs-on: ubuntu-24.04
+      # 仓库默认 token 是只读的（default_workflow_permissions=read），
+      # 不显式给 contents: write，release-drafter 建 release 会 403
+      # "Resource not accessible by integration"，upload_url 随之为空。
+      permissions:
+        contents: write
       steps:
         - uses: actions/checkout@v6
         - name: Draft release
